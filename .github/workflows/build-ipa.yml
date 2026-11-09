@@ -1,0 +1,47 @@
+name: Build Piofiore Native iOS IPA
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Unpack Project ZIP
+        run: |
+          if [ -f "Piofiore_iOS_Native_Project.zip" ]; then
+            unzip -o Piofiore_iOS_Native_Project.zip
+          fi
+
+      - name: Fetch stb_vorbis.c for Native Ogg Audio Decoding
+        run: |
+          curl -sL https://raw.githubusercontent.com/nothings/stb/master/stb_vorbis.c -o PiofioreIOS/stb_vorbis.c
+
+      - name: Build Unsigned Native iOS App (.app)
+        run: |
+          xcodebuild clean build \
+            -project PiofioreIOS.xcodeproj \
+            -scheme PiofioreIOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build_output \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package into Installable .ipa
+        run: |
+          mkdir -p Payload
+          cp -r build_output/Build/Products/Release-iphoneos/PiofioreIOS.app Payload/
+          zip -r9 Piofiore_Ricordo_iOS.ipa Payload
+
+      - name: Upload Piofiore_Ricordo_iOS.ipa Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Piofiore_Ricordo_iOS_IPA
+          path: Piofiore_Ricordo_iOS.ipa
